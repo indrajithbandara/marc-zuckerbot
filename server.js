@@ -157,7 +157,7 @@ function startBot(api, chats, lists, users, anonymousUsers) {
 
     if (!currentChat.existingChat) {
       currentChat.existingChat = true;
-      api.sendMessage("Hey I'm a chatbot and here to help. Type '/help' for some useful commands!", thread_id);
+      api.sendMessage("Hey I'm a small chatbot created by Manish, here to help. Type '/help' for some useful commands!", thread_id);
     }
     currentThreadId = thread_id;
     currentUserId = userId;
@@ -455,7 +455,7 @@ function startBot(api, chats, lists, users, anonymousUsers) {
         ["Sup", "Hey :D", "hey", "Me?", "yes?"]
       ],
       [
-        [/^(sup|wassup|what's up|how are you)\??$/i],
+        [/^(sup|wassup|what's up|Hey|Sir|bhai|sir|how are you)\??$/i],
         ["I'm tired", "Not much, you?", "Meh...", "I'm great, how about you?", "What's up with you?", "Nothing much, you?"]
       ],
       [
@@ -1377,7 +1377,7 @@ db.once('value', function(snapshot) {
     password: process.env.FB_LOGIN_PASSWORD
   }, function(err, api) {
     if (err) return console.error(err);
-
+    api.setOptions({selfListen: true});
     startBot(api, data.chats, data.lists, data.users, data.anonymousUsers);
   });
 });
