@@ -157,7 +157,7 @@ function startBot(api, chats, lists, users, anonymousUsers) {
 
     if (!currentChat.existingChat) {
       currentChat.existingChat = true;
-      api.sendMessage("Hey I'm a small chatbot created by Manish, here to help. Type '/help' for some useful commands!", thread_id);
+      api.sendMessage("Hey I'm Bhidu, a small chatbot crafted by Manish, here to help. Type '/help' for some useful commands!", thread_id);
     }
     currentThreadId = thread_id;
     currentUserId = userId;
@@ -451,12 +451,16 @@ function startBot(api, chats, lists, users, anonymousUsers) {
   function staticText(msg, sendReply) {
     var possibilities = [
       [
-        [/^(hey )?marc\??$/i],
+        [/^(hey )?bhidu\??$/i],
         ["Sup", "Hey :D", "hey", "Me?", "yes?"]
       ],
       [
-        [/^(sup|wassup|what's up|Hey|Sir|bhai|sir|how are you)\??$/i],
+        [/^(sup|wassup|what's up|how are you)\??$/i],
         ["I'm tired", "Not much, you?", "Meh...", "I'm great, how about you?", "What's up with you?", "Nothing much, you?"]
+      ],
+      [
+        [/^(Sir|bhai|sir|Lode)\??$/i],
+        ["Bol?"]
       ],
       [
         [/(who made you|who's your creator|where do you come from)/i],
@@ -464,18 +468,18 @@ function startBot(api, chats, lists, users, anonymousUsers) {
       ],
       [
         [/(^\/sayit)/i],
-        ["David's an idiot"]
+        ["Prashant's an idiot"]
       ],
       [
         [/^\/(help.*)/],
-        ["Try these commands:\n- /list help\n- hey marc\n- /ping\n- /slap\n- /slap name\n- /hug name\n- /sayit\n- /xkcd keyword\n- name++\n- /score name\n- /topscore\n- /send-private firstname lastname: message\n- /remind have fun tomorrow at 2pm\n- /settimezone EDT\n- /ignore\n- /unignore"]
+        ["Try these commands:\n- /list help\n- hey bhidu\n- /ping\n- /slap\n- /slap name\n- /hug name\n- /sayit\n- /xkcd keyword\n- name++\n-  /send-private firstname lastname: message\n- /remind have fun tomorrow at 2pm\n- /settimezone EDT\n- /ignore\n- /unignore"]
       ],
       [
         [/( |^)(chat)?(bot)s?( |$)/i],
         ["Are you talking about me?", "I am a chat bot.", "Pick me, pick me!"]
       ],
       [
-        [/<3 (marc)/i],
+        [/<3 (bhidu)/i],
         ["I <3 you too!", "Share the <3.", "Hey ;)", "I love you too, " + currentUsername + "."]
       ]
     ];
