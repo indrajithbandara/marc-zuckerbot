@@ -5,7 +5,7 @@ var shortId = require('shortid');
 var phonetic = require("phonetic");
 var request = require("request");
 var cheerio = require("cheerio");
-
+var unirest = require('unirest');
 // Little binding to prevent heroku from complaining about port binding
 var http = require('http');
 http.createServer(function(req, res) {
@@ -70,7 +70,7 @@ function startBot(api, chats, lists, users, anonymousUsers) {
   // If there is no state, the toString() function on an undefined property
   // will return the string undefined. This is going to be our default.
   var allCommands = {
-    'default': [addScore, spank, hashtag, subtractScore, score, pickup, ping, xkcdSearch, arbitraryLists, slap, hug, topScore, sendStickerBigSmall, reminders, setTimezone, sendPrivate, ignore, staticText, salute, weekendText, sexxiBatman, bees, albert, ericGame, sendSplit, sendBirthday, repeat, refmt],
+    'default': [addScore, spank, hashtag, subtractScore, score, pickup, ping, xkcdSearch, arbitraryLists, slap, hug, topScore, sendStickerBigSmall, reminders, setTimezone, sendPrivate, ignore, staticText, salute, weekendText, sexxiBatman, bees, albert, ericGame, sendSplit, sendBirthday, repeat, refmt, witNlp],
     'in-game': [pipeToEric],
     'ignored': [ignore]
   };
@@ -1371,6 +1371,169 @@ function startBot(api, chats, lists, users, anonymousUsers) {
     "Z": 0
   };
 }
+
+// custom function starts from here
+
+
+// function beLikeBill(msg, sendReply){
+//   if (matches(/(bill)/i, msg)) {
+//     return sendReply({
+//       text: "http://belikebill.azurewebsites.net/billgen-API.php?default=1"
+//     });
+//   }
+// }
+//
+// function randomChuckNorris(msg,sendReply) {
+//   if (matches(/(chuck jokes)/i, msg)) {
+//     unirest.get("https://api.chucknorris.io/jokes/random")
+//     .end(function (result) {
+//       return sendReply({
+//         text: result.body.value
+//       });
+//     });
+//   }
+// }
+
+
+var jokes = [
+  {joke: 'Did you hear about the guy whose whole left side was cut off? He\'s all right now.'},
+  {joke: "I'm reading a book about anti-gravity. It's impossible to put down."},
+  {joke: "I wondered why the baseball was getting bigger. Then it hit me."},
+  {joke: "It's not that the man did not know how to juggle, he just didn't have the balls to do it."},
+  {joke: "I'm glad I know sign language, it's pretty handy."},
+  {joke: "My friend's bakery burned down last night. Now his business is toast."},
+  {joke: "Why did the cookie cry? It was feeling crumby."},
+  {joke: "I used to be a banker, but I lost interest."},
+  {joke: "A drum and a symbol fall off a cliff"},
+  {joke: "Why do seagulls fly over the sea? Because they aren't bay-gulls!"},
+  {joke: "Why did the fireman wear red, white, and blue suspenders? To hold his pants up."},
+  {joke: "Why didn't the crab share his food? Because crabs are territorial animals, that don't share anything."},
+  {joke: "Why was the javascript developer sad? Because he didn't Node how to Express himself."},
+  {joke: "What do I look like? A JOKE MACHINE!?"},
+  {joke: "How did the hipster burn the roof of his mouth? He ate the pizza before it was cool."},
+  {joke: "Why is it hard to make puns for kleptomaniacs? They are always taking things literally."},
+  {joke: "Why do mermaid wear sea-shells? Because b-shells are too small."},
+  {joke: "I'm a humorless, cold hearted, machine."},
+  {joke: "Two fish in a tank. One looks to the other and says 'Can you even drive this thing???'"},
+  {joke: "Two fish swim down a river, and hit a wall. One says: 'Dam!'"},
+  {joke: "What's funnier than a monkey dancing with an elephant? Two monkeys dancing with an elephant."},
+  {joke: "How did Darth Vader know what Luke was getting for Christmas? He felt his presents."},
+  {joke: "What's red and bad for your teeth? A Brick."},
+  {joke: "What's orange and sounds like a parrot? A Carrot."},
+  {joke: "What do you call a cow with no legs? Ground beef"},
+  {joke: "Two guys walk into a bar. You'd think the second one would have noticed."},
+  {joke: "What is a centipedes's favorite Beatle song?  I want to hold your hand, hand, hand, hand..."},
+  {joke: "What do you call a chicken crossing the road? Poultry in moton. "},
+  {joke: "Did you hear about the Mexican train killer?  He had locomotives"},
+  {joke: "What do you call a fake noodle?  An impasta"},
+  {joke: "How many tickles does it take to tickle an octupus? Ten-tickles!"},
+  {joke: "At the rate law schools are turning them out, by 2050 there will be more lawyers than humans."}
+];
+function witNlp(msg,sendReply){
+  if (msg.indexOf('marc') > -1){
+    msg=msg.split(' ').join('+');
+    console.log(msg);
+    // These code snippets use an open-source library. http://unirest.io/nodejs
+    unirest.get("https://baskarm28-wit-ai-v1.p.mashape.com/message?q="+msg)
+    .header("X-Mashape-Key", "VDsTfe4jqDmsh2bJvT9QZGlDHjzLp1QpTKzjsnSSOXONTjcmdp")
+    .header("Accept", "application/vnd.wit.20140620+json")
+    .header("Authorization", "Bearer UQF7J3MNF2HNIXWLZFHORLIKXUUWIDTI")
+    .end(function (result) {
+      var response=result.body.outcomes[0].entities;
+      console.log(response);
+      try {
+          var intent=response.intent[0].value.value;
+          console.log(intent);
+          if (intent=='quote') {
+            try {
+              var category=response.category[0].value.value;
+              // console.log(category);
+              unirest.post("https://andruxnet-random-famous-quotes.p.mashape.com/?cat="+category+"&count=1")
+              .header("X-Mashape-Key", "VDsTfe4jqDmsh2bJvT9QZGlDHjzLp1QpTKzjsnSSOXONTjcmdp")
+              .header("Content-Type", "application/x-www-form-urlencoded")
+              .header("Accept", "application/json")
+              .end(function (result) {
+                return sendReply({
+                  text:result.body.quote+' by'+ result.body.author
+                });
+                // console.log(result.body.quote+' '+ result.body.author);
+              });
+            } catch (e) {
+              unirest.post("https://andruxnet-random-famous-quotes.p.mashape.com/?cat=famous&count=1")
+              .header("X-Mashape-Key", "VDsTfe4jqDmsh2bJvT9QZGlDHjzLp1QpTKzjsnSSOXONTjcmdp")
+              .header("Content-Type", "application/x-www-form-urlencoded")
+              .header("Accept", "application/json")
+              .end(function (result) {
+                return sendReply({
+                  text:result.body.quote+' by'+ result.body.author
+                });
+                // console.log(result.body.quote+' '+ result.body.author);
+              });
+            }
+          }
+          else if (intent=='joke') {
+            try {
+              var index = Math.floor(Math.random() * jokes.length);
+              var randomQuote = jokes[index];
+              return sendReply({
+                text:randomQuote.joke
+              });
+              // console.log(randomQuote.joke);
+            } catch (e) {
+              return sendReply({
+                text:'I am shy at telling jokes'
+              });
+            }
+          }
+          else if (intent=='movie') {
+            try {
+              var category=response.category[0].value.value;
+              console.log(category);
+              if (category=='favourite') {
+                var file ='movies.json';
+                fs.readFile(file, 'utf8', function (err, data) {
+                  if (err) {
+                    console.log('Error: ' + err);
+                    return;
+                  }
+                  listMovie = JSON.parse(data);
+                  var index = Math.floor(Math.random() * listMovie.results.length);
+                  var randomMovie = listMovie.results[index];
+                  return sendReply({
+                    text:randomMovie
+                  });
+                  // console.log(randomMovie);
+                });
+              }
+              else if (category=='tranding') {
+                var req = unirest("GET", "https://api.themoviedb.org/3/movie/now_playing");
+
+                  req.query({
+                    "page": "1",
+                    "language": "en-US",
+                    "api_key": "b902673ede213dbd0636564e16adedc2"
+                  });
+
+                    req.send("{}");
+
+                  req.end(function (res) {
+                    if (res.error) throw new Error(res.error);
+
+                    console.log(res.body);
+                  });
+              }
+            } catch (e) {
+              console.log('There was an error', e);
+
+            }
+          }
+        } catch (e) {
+          console.log('There was an error', e);
+        }
+    });
+  }
+}
+
 
 // Main function
 db.once('value', function(snapshot) {
