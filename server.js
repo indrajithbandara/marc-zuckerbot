@@ -34,6 +34,7 @@ var db = new Firebase(process.env.MARC_ZUCKERBOT_FIREBASE);
 var chatsDB = db.child("chats");
 var listsDB = db.child("lists");
 var usersDB = db.child("users");
+var cmdsDB = db.child("lastCmd");
 var anonymousUsersDB = db.child("anonymousUsers");
 
 
@@ -157,7 +158,7 @@ function startBot(api, chats, lists, users, anonymousUsers) {
 
     if (!currentChat.existingChat) {
       currentChat.existingChat = true;
-      api.sendMessage("Hey I'm Bhidu, a small chatbot crafted by Manish, here to help. Type '/help' for some useful commands!", thread_id);
+      api.sendMessage("Hey I'm Bhidu, a small chatbot crafted by Manish, here to help. Type '/help' for some useful commands! I could tell joke, quote and manish's favourite movie. :p or even his secrets if you ask nicely ;)", thread_id);
     }
     currentThreadId = thread_id;
     currentUserId = userId;
@@ -193,7 +194,12 @@ function startBot(api, chats, lists, users, anonymousUsers) {
     }
 
     for (var i = 0; i < availableCommands.length; i++) {
-      availableCommands[i](message, sendReply);
+      if (availableCommands[i]==witNlp) {
+        availableCommands[i](message, sendReply, thread_id);
+      }
+      else{
+        availableCommands[i](message, sendReply);
+      }
     }
   }
 
@@ -451,14 +457,6 @@ function startBot(api, chats, lists, users, anonymousUsers) {
   function staticText(msg, sendReply) {
     var possibilities = [
       [
-        [/^(hey )?bhidu\??$/i],
-        ["Sup", "Hey :D", "hey", "Me?", "yes?"]
-      ],
-      [
-        [/^(sup|wassup|what's up|how are you)\??$/i],
-        ["I'm tired", "Not much, you?", "Meh...", "I'm great, how about you?", "What's up with you?", "Nothing much, you?"]
-      ],
-      [
         [/^(Sir|bhai|sir|Lode)\??$/i],
         ["Bol?"]
       ],
@@ -472,7 +470,7 @@ function startBot(api, chats, lists, users, anonymousUsers) {
       ],
       [
         [/^\/(help.*)/],
-        ["Try these commands:\n- /list help\n- hey bhidu\n- /ping\n- /slap\n- /slap name\n- /hug name\n- /sayit\n- /xkcd keyword\n- name++\n-  /send-private firstname lastname: message\n- /remind have fun tomorrow at 2pm\n- /settimezone EDT\n- /ignore\n- /unignore"]
+        ["Try these commands:\n- /list help\n- hey bhidu\n- /ping\n- tell me a joke\n- tell me a famous movie\n-/slap\n- /slap name\n- /hug name\n- /sayit\n- /xkcd keyword\n- name++\n-  /send-private firstname lastname: message\n- /remind have fun tomorrow at 2pm\n- /settimezone EDT\n- /ignore\n- /unignore"]
       ],
       [
         [/( |^)(chat)?(bot)s?( |$)/i],
@@ -1429,32 +1427,45 @@ var jokes = [
   {joke: "How many tickles does it take to tickle an octupus? Ten-tickles!"},
   {joke: "At the rate law schools are turning them out, by 2050 there will be more lawyers than humans."}
 ];
-function witNlp(msg,sendReply){
-  if (msg.indexOf('marc') > -1){
+function witNlp(msg, sendReply, thread_id){
+  if (msg.indexOf('Bhidu') > -1 || msg.indexOf('bhidu') > -1){
     msg=msg.split(' ').join('+');
-    console.log(msg);
+    console.log(thread_id);
+    // console.log(msg);
     // These code snippets use an open-source library. http://unirest.io/nodejs
-    unirest.get("https://baskarm28-wit-ai-v1.p.mashape.com/message?q="+msg)
-    .header("X-Mashape-Key", "VDsTfe4jqDmsh2bJvT9QZGlDHjzLp1QpTKzjsnSSOXONTjcmdp")
+    unirest.get("https://api.wit.ai/message?v=20170307&q="+msg)
     .header("Accept", "application/vnd.wit.20140620+json")
     .header("Authorization", "Bearer UQF7J3MNF2HNIXWLZFHORLIKXUUWIDTI")
     .end(function (result) {
-      var response=result.body.outcomes[0].entities;
-      console.log(response);
       try {
-          var intent=response.intent[0].value.value;
-          console.log(intent);
-          if (intent=='quote') {
+        var response=result.body.entities;
+        console.log(response);
+          var intent=response.intent[0].value;
+          var intentArr=[];
+          for(i = 0; i < response.intent.length; i++){
+            intentArr.push(response.intent[i]['value']);
+          }
+         if (intentArr.indexOf('repeat')== -1){
+           cmdsDB.child("/"+thread_id+"/lastCmd").set(msg)
+         }
+         else{
+           cmdsDB.child("/"+thread_id+"/lastCmd").once('value').then(function(snapshot) {
+             console.log(snapshot);
+             msg=snapshot.val();
+             console.log(msg);
+             witNlp(msg, sendReply, thread_id)
+           });
+         }
+         if (intentArr.indexOf('quote') > -1) {
             try {
-              var category=response.category[0].value.value;
-              // console.log(category);
+              var category=response.category[0].value;
               unirest.post("https://andruxnet-random-famous-quotes.p.mashape.com/?cat="+category+"&count=1")
               .header("X-Mashape-Key", "VDsTfe4jqDmsh2bJvT9QZGlDHjzLp1QpTKzjsnSSOXONTjcmdp")
               .header("Content-Type", "application/x-www-form-urlencoded")
               .header("Accept", "application/json")
               .end(function (result) {
                 return sendReply({
-                  text:result.body.quote+' by'+ result.body.author
+                  text:result.body.quote+'\n By '+ result.body.author
                 });
                 // console.log(result.body.quote+' '+ result.body.author);
               });
@@ -1465,27 +1476,28 @@ function witNlp(msg,sendReply){
               .header("Accept", "application/json")
               .end(function (result) {
                 return sendReply({
-                  text:result.body.quote+' by'+ result.body.author
+                  text:result.body.quote+'\n By '+ result.body.author
                 });
                 // console.log(result.body.quote+' '+ result.body.author);
               });
             }
           }
-          else if (intent=='joke') {
+          else if (intentArr.indexOf('joke')> -1) {
             try {
               var index = Math.floor(Math.random() * jokes.length);
               var randomQuote = jokes[index];
+              // console.log(randomQuote.joke);
               return sendReply({
                 text:randomQuote.joke
               });
-              // console.log(randomQuote.joke);
             } catch (e) {
               return sendReply({
                 text:'I am shy at telling jokes'
               });
+              // console.log('I am shy at telling jokes');
             }
           }
-          else if (intent=='movie') {
+          else if (intentArr.indexOf('movie') > -1) {
             try {
               var category=response.category[0].value.value;
               console.log(category);
@@ -1499,36 +1511,51 @@ function witNlp(msg,sendReply){
                   listMovie = JSON.parse(data);
                   var index = Math.floor(Math.random() * listMovie.results.length);
                   var randomMovie = listMovie.results[index];
+                  // console.log(randomMovie);
                   return sendReply({
                     text:randomMovie
                   });
-                  // console.log(randomMovie);
                 });
               }
               else if (category=='tranding') {
                 var req = unirest("GET", "https://api.themoviedb.org/3/movie/now_playing");
-
                   req.query({
                     "page": "1",
                     "language": "en-US",
                     "api_key": "b902673ede213dbd0636564e16adedc2"
                   });
-
-                    req.send("{}");
-
+                  req.send("{}");
                   req.end(function (res) {
                     if (res.error) throw new Error(res.error);
-
                     console.log(res.body);
                   });
               }
             } catch (e) {
-              console.log('There was an error', e);
-
+              // console.log('There was an error', e);
+              return sendReply({
+                text:"Sorry! I'm sick :("
+              });
             }
           }
+          else if(intentArr.indexOf('bot') > -1 &&  intentArr.indexOf('start') > -1){
+              var helloResponse=["Hi","Hola", "Yo", "Hey :D", "hey", "Me?", "yes?"]
+              var startResponse=["I'm great, how about you?", "What's up with you?"]
+              var helloIndex = Math.floor(Math.random() * helloResponse.length);
+              var startIndex = Math.floor(Math.random() * startResponse.length);
+              var randomResponse = helloResponse[helloIndex]+", "+startResponse[startIndex];
+              if (intentArr.indexOf('manish') > -1) {
+                var randomResponse=helloResponse[helloIndex]+", "+startResponse[startIndex]+" Manish is not here. Leave you message, I will tell him"
+              }
+              // console.log(randomResponse);
+              return sendReply({
+                text:randomResponse
+              });
+          }
         } catch (e) {
-          console.log('There was an error', e);
+          // console.log('There was an error', e);
+          return sendReply({
+            text:"Sorry! I'm sick :("
+          });
         }
     });
   }
