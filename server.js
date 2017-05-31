@@ -6,6 +6,7 @@ var phonetic = require("phonetic");
 var request = require("request");
 var cheerio = require("cheerio");
 var unirest = require('unirest');
+var fs = require('fs');
 // Little binding to prevent heroku from complaining about port binding
 var http = require('http');
 http.createServer(function(req, res) {
@@ -16,18 +17,9 @@ http.createServer(function(req, res) {
   res.end("");
 }).listen(process.env.PORT || 5000);
 
-setInterval(function() {
-  http.get("http://marc-zuckerbot.herokuapp.com", function(res) {
-    console.log("pong");
-  });
-}, 1800000 * Math.random() + 1200000); // between 20 and 50 min
-
 
 if (!process.env.MARC_ZUCKERBOT_FIREBASE) return console.error("MARC_ZUCKERBOT_FIREBASE env variable isn't set!");
 
-
-var ericURL = "http://192.168.1.101:34567/?data=";
-if (process.env.ERIC_URL) ericURL = process.env.ERIC_URL;
 
 var MARC_ID = 100009069356507;
 var db = new Firebase(process.env.MARC_ZUCKERBOT_FIREBASE);
@@ -71,8 +63,7 @@ function startBot(api, chats, lists, users, anonymousUsers) {
   // If there is no state, the toString() function on an undefined property
   // will return the string undefined. This is going to be our default.
   var allCommands = {
-    'default': [addScore, spank, hashtag, subtractScore, score, pickup, ping, xkcdSearch, arbitraryLists, slap, hug, topScore, sendStickerBigSmall, reminders, setTimezone, sendPrivate, ignore, staticText, salute, weekendText, sexxiBatman, bees, albert, ericGame, sendSplit, sendBirthday, repeat, refmt, witNlp],
-    'in-game': [pipeToEric],
+    'default': [addScore, spank, hashtag, subtractScore, score, pickup, ping, xkcdSearch, arbitraryLists, slap, hug, topScore, sendStickerBigSmall, reminders, setTimezone, sendPrivate, ignore, staticText, salute, weekendText, sexxiBatman, bees, albert, sendSplit, sendBirthday, repeat, refmt, witNlp],
     'ignored': [ignore]
   };
 
@@ -195,7 +186,7 @@ function startBot(api, chats, lists, users, anonymousUsers) {
 
     for (var i = 0; i < availableCommands.length; i++) {
       if (availableCommands[i]==witNlp) {
-        availableCommands[i](message, sendReply, thread_id);
+        availableCommands[i](message, sendReply, thread_id, username);
       }
       else{
         availableCommands[i](message, sendReply);
@@ -254,109 +245,6 @@ function startBot(api, chats, lists, users, anonymousUsers) {
     });
 
     //if(!users[currentUserId] || !users[currentUserId].preMessage) return sendReply({text: "No previous message to reply to."});
-  }
-
-  function pipeToEric(msg, sendReply) {
-    var match = matches(/^\/(.*)/i, msg);
-    if (!match) return;
-
-    var commandToSend = match.trim().replace(/\s+/g, "+");
-    if (commandToSend === "stop-game") {
-      currentOtherIds.map(function(v) {
-        if (users[v] && users[v][currentThreadId]) users[v][currentThreadId].state = null;
-        if (users[v] && users[v][v]) users[v][v].state = null;
-      });
-      // return sendReply({text: "Game stopped"});
-    }
-    var cachedCurrentOtherIds = currentOtherIds;
-    var cachedCurrentOtherUsernames = currentOtherUsernames;
-    _get(ericURL + [currentThreadId, currentUserId, commandToSend].join("+"), function(err, res, html) {
-      if (!html) return console.error("No html from eric?");
-      var arr = html.split("@@");
-      arr = arr.map(function(v, i) {
-        if (i % 2 === 1) return v;
-        return cachedCurrentOtherIds.reduce(function(acc, u) {
-          return acc.split(u).join(cachedCurrentOtherUsernames[cachedCurrentOtherIds.indexOf(u)]);
-        }, v);
-      });
-      if (arr.length === 1 && arr[0].length > 0) {
-        return sendReply({
-          text: arr[0]
-        });
-      }
-      // Send the reply into the main thread
-      sendReply({
-        text: arr[0]
-      });
-
-      // Send individual replies to private threads
-      var characters = arr.slice(1, arr.length);
-      for (var i = 0; i < characters.length; i += 2) {
-        var playerId = parseInt(characters[i]);
-        var message = characters[i + 1];
-        // Check if there's a message sent to zuckerbot
-        // if yes and the message is end, that means the game is done
-        if (characters[i] === 'zuckerbot') {
-          var splittedMessage = message.split(" ");
-          var action = splittedMessage[0];
-          var threadID = parseInt(splittedMessage[1]);
-          if (action === "end") {
-            cachedCurrentOtherIds.map(function(v) {
-              users[v][threadID].state = null;
-            });
-            // if(users[threadID] && users[threadID][threadID]) users[threadID][threadID].state = null;
-          }
-          continue;
-        }
-        console.log(i, characters, characters[i], playerId, cachedCurrentOtherUsernames[cachedCurrentOtherIds.indexOf(playerId)]);
-        api.sendMessage(message, playerId, function(err) {
-          if (err) {
-            console.error(err);
-            throw new Error("look above");
-          }
-        });
-      }
-    });
-  }
-
-  function ericGame(msg, sendReply) {
-    var match = matches(/^\/(start-game.*)/i, msg);
-    if (!match) return;
-
-    var difficulty = match.trim().split(' ')[1];
-    _get(ericURL + [currentThreadId, currentUserId, "start-game", difficulty].concat(currentOtherIds).join("+"), function(err, res, html) {
-      if (err) return console.error(err);
-      if (!html) return console.error("Empty packet....");
-
-      var arr = html.split("@@");
-      if (arr.length === 1) {
-        return sendReply({
-          text: html
-        });
-      }
-
-      currentOtherIds.map(function(v) {
-        users[v] = users[v] || {};
-        users[v][currentThreadId] = {
-          state: "in-game"
-        };
-        users[v][v] = {
-          state: "in-game"
-        };
-      });
-
-      sendReply({
-        text: arr[0]
-      });
-      var characters = arr.slice(1, arr.length);
-      for (var i = 0; i < characters.length; i += 2) {
-        var playerId = parseInt(characters[i]);
-        var char = characters[i + 1];
-        api.sendMessage(currentOtherUsernames[currentOtherIds.indexOf(playerId)] + char, playerId, function(err) {
-          if (err) throw err;
-        });
-      }
-    });
   }
 
   function sendPrivate(msg, sendReply) {
@@ -1427,12 +1315,10 @@ var jokes = [
   {joke: "How many tickles does it take to tickle an octupus? Ten-tickles!"},
   {joke: "At the rate law schools are turning them out, by 2050 there will be more lawyers than humans."}
 ];
-function witNlp(msg, sendReply, thread_id){
-  if (msg.indexOf('Bhidu') > -1 || msg.indexOf('bhidu') > -1){
+function witNlp(msg, sendReply, thread_id, username){
+  if (msg.indexOf('bhidu') > -1 || msg.indexOf('Bhidu') > -1 ){
     msg=msg.split(' ').join('+');
-    console.log(thread_id);
-    // console.log(msg);
-    // These code snippets use an open-source library. http://unirest.io/nodejs
+    // console.log(thread_id);
     unirest.get("https://api.wit.ai/message?v=20170307&q="+msg)
     .header("Accept", "application/vnd.wit.20140620+json")
     .header("Authorization", "Bearer UQF7J3MNF2HNIXWLZFHORLIKXUUWIDTI")
@@ -1497,9 +1383,15 @@ function witNlp(msg, sendReply, thread_id){
               // console.log('I am shy at telling jokes');
             }
           }
+          else if (intentArr.indexOf('swear') > -1) {
+            return sendReply({
+              text:'You are bad. I do not want to talk to you'
+            });
+            // console.log("You are bad. I do not want to talk to you");
+          }
           else if (intentArr.indexOf('movie') > -1) {
             try {
-              var category=response.category[0].value.value;
+              var category=response.category[0].value;
               console.log(category);
               if (category=='favourite') {
                 var file ='movies.json';
@@ -1511,9 +1403,9 @@ function witNlp(msg, sendReply, thread_id){
                   listMovie = JSON.parse(data);
                   var index = Math.floor(Math.random() * listMovie.results.length);
                   var randomMovie = listMovie.results[index];
-                  // console.log(randomMovie);
+                  console.log(randomMovie);
                   return sendReply({
-                    text:randomMovie
+                    text:"Hey "+username+" this is one of his favourite movie. \n "+randomMovie.original_title+" \n"+randomMovie.overview
                   });
                 });
               }
@@ -1531,20 +1423,20 @@ function witNlp(msg, sendReply, thread_id){
                   });
               }
             } catch (e) {
-              // console.log('There was an error', e);
-              return sendReply({
-                text:"Sorry! I'm sick :("
-              });
+              console.log('There was an error', e);
+              // return sendReply({
+              //   text:"Sorry! I'm sick :("
+              // });
             }
           }
-          else if(intentArr.indexOf('bot') > -1 &&  intentArr.indexOf('start') > -1){
+          else if(intentArr.indexOf('start') > -1){
               var helloResponse=["Hi","Hola", "Yo", "Hey :D", "hey", "Me?", "yes?"]
               var startResponse=["I'm great, how about you?", "What's up with you?"]
               var helloIndex = Math.floor(Math.random() * helloResponse.length);
               var startIndex = Math.floor(Math.random() * startResponse.length);
-              var randomResponse = helloResponse[helloIndex]+", "+startResponse[startIndex];
+              var randomResponse = helloResponse[helloIndex]+"  How can I help you?  Type '/help' for some useful commands! I could tell joke, quote and manish's favourite movie. :p or even his secrets if you ask nicely ;)"
               if (intentArr.indexOf('manish') > -1) {
-                var randomResponse=helloResponse[helloIndex]+", "+startResponse[startIndex]+" Manish is not here. Leave you message, I will tell him"
+                var randomResponse=helloResponse[helloIndex]+", Manish is not here. Leave your message, I will tell him"
               }
               // console.log(randomResponse);
               return sendReply({
@@ -1552,10 +1444,10 @@ function witNlp(msg, sendReply, thread_id){
               });
           }
         } catch (e) {
-          // console.log('There was an error', e);
-          return sendReply({
-            text:"Sorry! I'm sick :("
-          });
+          console.log('There was an error', e);
+          // return sendReply({
+          //   text:"Sorry! I'm sick :("
+          // });
         }
     });
   }
