@@ -1336,7 +1336,6 @@ function witNlp(msg, sendReply, thread_id, username){
          }
          else{
            cmdsDB.child("/"+thread_id+"/lastCmd").once('value').then(function(snapshot) {
-             console.log(snapshot);
              msg=snapshot.val();
              console.log(msg);
              witNlp(msg, sendReply, thread_id)
